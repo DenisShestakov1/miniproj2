@@ -4,6 +4,8 @@ from config import API_TOKEN
 from handlers import handle_menu, collect_data, handle_questions_menu
 from ui import get_main_menu, get_questions_menu
 
+
+
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
