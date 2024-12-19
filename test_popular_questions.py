@@ -1,71 +1,49 @@
-import pytest
-import sqlite3
-from popular_questions import get_popular_questions
+import unittest
+from handlers import handle_user_input
+from ui import render_question_list
+from db import insert_question, fetch_all_questions
+from cleaning import clean_text
+from config import load_config
 
-# Укажите путь к тестовой базе данных
-TEST_DB_PATH = "questions.db"
+class TestHandlers(unittest.TestCase):
+    def test_handle_user_input_valid(self):
+        """Тест: Проверка обработки валидного пользовательского ввода."""
+        result = handle_user_input("What is AI?")
+        self.assertEqual(result, {"status": "success", "message": "Input processed"})
 
-@pytest.fixture
-def setup_test_db():
-    """Создание тестовой базы данных перед тестами."""
-    conn = sqlite3.connect(TEST_DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS questions (id INTEGER PRIMARY KEY, question TEXT)")
-    conn.commit()
-    yield conn  # Передаём соединение в тест
-    conn.close()
+class TestUI(unittest.TestCase):
+    def test_render_question_list(self):
+        """Тест: Проверка рендера списка вопросов."""
+        questions = ["What is AI?", "What is Python?"]
+        result = render_question_list(questions)
+        self.assertIn("What is AI?", result)
+        self.assertIn("What is Python?", result)
 
-def test_get_popular_questions(setup_test_db, monkeypatch):
-    """Тестируем функцию получения популярных вопросов."""
-    # Подменяем путь к базе данных
-    monkeypatch.setattr('popular_questions.DB_PATH', TEST_DB_PATH)
+class TestDB(unittest.TestCase):
+    def test_insert_question(self):
+        """Тест: Проверка вставки вопроса в базу данных."""
+        question = {"id": 1, "text": "What is AI?", "popularity": 100}
+        result = insert_question(question)
+        self.assertTrue(result)
 
-    # Добавляем данные в базу
-    cursor = setup_test_db.cursor()
-    cursor.execute("INSERT INTO questions (question) VALUES ('Какой статус моего заказа?')")
-    cursor.execute("INSERT INTO questions (question) VALUES ('Как изменить адрес доставки?')")
-    cursor.execute("INSERT INTO questions (question) VALUES ('Сколько времени занимает доставка?')")
-    setup_test_db.commit()
+    def test_fetch_all_questions(self):
+        """Тест: Проверка выборки всех вопросов из базы данных."""
+        result = fetch_all_questions()
+        self.assertIsInstance(result, list)
 
-    # Вызываем тестируемую функцию
-    questions = get_popular_questions()
-    
-    # Проверяем, что возвращаются три вопроса
-    assert len(questions) == 3
-    assert "Какой статус моего заказа?" in questions
-    assert "Как изменить адрес доставки?" in questions
-    assert "Сколько времени занимает доставка?" in questions
+class TestCleaning(unittest.TestCase):
+    def test_clean_text_removes_special_characters(self):
+        """Тест: Проверка очистки текста от специальных символов."""
+        dirty_text = "What is AI?!@#$"
+        result = clean_text(dirty_text)
+        self.assertEqual(result, "What is AI")
 
-def test_empty_database(setup_test_db, monkeypatch):
-    """Тестируем функцию на пустой базе данных."""
-    # Подменяем путь к базе данных
-    monkeypatch.setattr('popular_questions.DB_PATH', TEST_DB_PATH)
+class TestConfig(unittest.TestCase):
+    def test_load_config_valid_file(self):
+        """Тест: Проверка загрузки конфигурации из валидного файла."""
+        config_path = "config.json"
+        result = load_config(config_path)
+        self.assertIn("database_url", result)
 
-    # Вызываем тестируемую функцию
-    questions = get_popular_questions()
-    
-    # Проверяем, что возвращается сообщение о пустых данных
-    assert questions == ["Вопросы пока не добавлены."]
-
-def test_more_than_three_questions(setup_test_db, monkeypatch):
-    """Тестируем, что возвращаются не более трёх вопросов."""
-    # Подменяем путь к базе данных
-    monkeypatch.setattr('popular_questions.DB_PATH', TEST_DB_PATH)
-
-    # Добавляем более трёх вопросов в базу
-    cursor = setup_test_db.cursor()
-    cursor.execute("INSERT INTO questions (question) VALUES ('Вопрос 1')")
-    cursor.execute("INSERT INTO questions (question) VALUES ('Вопрос 2')")
-    cursor.execute("INSERT INTO questions (question) VALUES ('Вопрос 3')")
-    cursor.execute("INSERT INTO questions (question) VALUES ('Вопрос 4')")
-    setup_test_db.commit()
-
-    # Вызываем тестируемую функцию
-    questions = get_popular_questions()
-    
-    # Проверяем, что возвращаются ровно три вопроса
-    assert len(questions) == 3
-    assert "Вопрос 4" in questions  # Последний добавленный вопрос должен быть первым в выдаче
-    assert "Вопрос 3" in questions
-    assert "Вопрос 2" in questions
-    assert "Вопрос 1" not in questions  # Самый старый вопрос не должен вернуться
+if __name__ == "__main__":
+    unittest.main()

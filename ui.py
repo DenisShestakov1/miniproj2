@@ -11,4 +11,7 @@ def get_main_menu():
     return menu
 
 
-    
+def get_questions_menu():
+    # Реализация функции
+    pass
+
